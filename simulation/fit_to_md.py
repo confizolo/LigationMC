@@ -6,14 +6,20 @@ import argparse
 import math
 import os
 from collections import Counter
+import sys
 from typing import Any
+
+# Ensure repo root is on sys.path for direct script execution.
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .analysis import save_json
-from .dsmc_engine import CyclisationEvent, DSMCEngine
-from .polymer_utils import RESULTS_DIR
+from simulation.analysis import save_json
+from simulation.dsmc_engine import CyclisationEvent, DSMCEngine
+from simulation.polymer_utils import RESULTS_DIR
 
 try:
     from scipy.optimize import minimize

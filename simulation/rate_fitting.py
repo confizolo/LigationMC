@@ -5,12 +5,18 @@ from __future__ import annotations
 import argparse
 import glob
 import os
+import sys
 from typing import Any
+
+# Ensure repo root is on sys.path for direct script execution.
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 import numpy as np
 
-from .analysis import save_json
-from .polymer_utils import RESULTS_DIR
+from simulation.analysis import save_json
+from simulation.polymer_utils import RESULTS_DIR
 
 try:
     from scipy.optimize import least_squares

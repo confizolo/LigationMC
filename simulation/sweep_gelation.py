@@ -9,6 +9,12 @@ import sys
 import traceback
 from typing import Any
 
+# Ensure repo root is on sys.path for direct script execution.
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+from typing import Any
+
 import numpy as np
 
 try:
@@ -16,9 +22,9 @@ try:
 except ImportError:  # pragma: no cover
     tqdm = None
 
-from .analysis import save_json, save_results_all
-from .main_ligmc import FITTED_K1_DEFAULT, FITTED_K2_DEFAULT, FITTED_A_DEFAULT, _first_stage_to_half, run_single_trial
-from .polymer_utils import RESULTS_DIR, calculate_polymer_numbers
+from simulation.analysis import save_json, save_results_all
+from simulation.main_ligmc import FITTED_K1_DEFAULT, FITTED_K2_DEFAULT, FITTED_A_DEFAULT, _first_stage_to_half, run_single_trial
+from simulation.polymer_utils import RESULTS_DIR, calculate_polymer_numbers
 
 
 def build_system_grid(
