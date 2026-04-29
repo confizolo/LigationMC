@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+_smoke_results/
+*.egg-info/
+
+# Large legacy files
+DSMC/LAMMPS/melt.l200n1000.m43.equilibrated.data
+DSMC/LAMMPS/reconstruct_topology_wnetwork.nb
+
+# Generated outputs (should not be tracked)
+gel_time_compare.csv
+gel_time_compare.png
+
+# Internal planning artifacts
+implementation_plan.md
+task.md
