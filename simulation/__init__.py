@@ -1,15 +1,15 @@
 """LigMC simulation core — DSMC engine, network builder, and fitting tools."""
 
-from simulation.dsmc_engine import DSMCEngine, MergeEvent, CyclisationEvent, Event
-from simulation.network_builder import NetworkBuilder
-from simulation.polymer_utils import (
+from .dsmc_engine import DSMCEngine, MergeEvent, CyclisationEvent, Event
+from .network_builder import NetworkBuilder
+from .polymer_utils import (
     RESULTS_DIR,
     calculate_polymer_numbers,
     smoluchowski_kernel,
     cyclisation_rate,
     valence_model,
 )
-from simulation.analysis import (
+from .analysis import (
     save_trial_results,
     save_results_all,
     save_event_timeline,

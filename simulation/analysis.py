@@ -10,7 +10,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
-from simulation.polymer_utils import RESULTS_DIR
+from .polymer_utils import RESULTS_DIR
 
 
 def _system_tag(L: int, mring: int, nring: int, mlin: int, nlin: int) -> str:

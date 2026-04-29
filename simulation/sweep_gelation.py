@@ -16,9 +16,9 @@ try:
 except ImportError:  # pragma: no cover
     tqdm = None
 
-from simulation.analysis import save_json, save_results_all
-from simulation.main_ligmc import FITTED_K1_DEFAULT, FITTED_K2_DEFAULT, FITTED_A_DEFAULT, _first_stage_to_half, run_single_trial
-from simulation.polymer_utils import RESULTS_DIR, calculate_polymer_numbers
+from .analysis import save_json, save_results_all
+from .main_ligmc import FITTED_K1_DEFAULT, FITTED_K2_DEFAULT, FITTED_A_DEFAULT, _first_stage_to_half, run_single_trial
+from .polymer_utils import RESULTS_DIR, calculate_polymer_numbers
 
 
 def build_system_grid(

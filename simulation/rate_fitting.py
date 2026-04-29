@@ -9,8 +9,8 @@ from typing import Any
 
 import numpy as np
 
-from simulation.analysis import save_json
-from simulation.polymer_utils import RESULTS_DIR
+from .analysis import save_json
+from .polymer_utils import RESULTS_DIR
 
 try:
     from scipy.optimize import least_squares

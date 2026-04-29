@@ -11,9 +11,9 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
-from simulation.analysis import save_json
-from simulation.dsmc_engine import CyclisationEvent, DSMCEngine
-from simulation.polymer_utils import RESULTS_DIR
+from .analysis import save_json
+from .dsmc_engine import CyclisationEvent, DSMCEngine
+from .polymer_utils import RESULTS_DIR
 
 try:
     from scipy.optimize import minimize

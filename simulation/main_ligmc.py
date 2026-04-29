@@ -15,7 +15,7 @@ try:
 except ImportError:  # pragma: no cover
     tqdm = None
 
-from simulation.analysis import (
+from .analysis import (
     plot_degree_distributions,
     plot_gelation_curves,
     plot_stages_vs_nlin_nring,
@@ -23,9 +23,9 @@ from simulation.analysis import (
     save_results_all,
     save_trial_results,
 )
-from simulation.dsmc_engine import CyclisationEvent, DSMCEngine
-from simulation.network_builder import NetworkBuilder
-from simulation.polymer_utils import RESULTS_DIR
+from .dsmc_engine import CyclisationEvent, DSMCEngine
+from .network_builder import NetworkBuilder
+from .polymer_utils import RESULTS_DIR
 
 
 FITTED_K1_DEFAULT = 1.0

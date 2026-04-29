@@ -5,11 +5,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+# Ensure repo root is on sys.path for cross-package imports.
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 from simulation.analysis import save_json
 from simulation.fit_to_md import _js_divergence, simulate_length_pmf

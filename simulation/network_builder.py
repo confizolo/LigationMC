@@ -9,8 +9,8 @@ from dataclasses import replace
 import networkx as nx
 import numpy as np
 
-from simulation.dsmc_engine import CyclisationEvent
-from simulation.polymer_utils import valence_model
+from .dsmc_engine import CyclisationEvent
+from .polymer_utils import valence_model
 
 
 class NetworkBuilder:

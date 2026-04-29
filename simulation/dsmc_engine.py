@@ -7,7 +7,7 @@ from typing import Union
 
 import numpy as np
 
-from simulation.polymer_utils import cyclisation_rate, smoluchowski_kernel
+from .polymer_utils import cyclisation_rate, smoluchowski_kernel
 
 
 @dataclass
