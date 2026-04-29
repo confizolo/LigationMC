@@ -26,6 +26,6 @@ for system in "${systems[@]}"; do
     echo "Running system configuration: ${system}"
     read -r L mr nr ml nl rep time <<< "$system"
 
-    python main_ligmc.py --progress --workers 30 --L $L --mring $mr --nring $nr --mlin $ml --nlin $nl
+    python -m simulation.main_ligmc --progress --workers 30 --L $L --mring $mr --nring $nr --mlin $ml --nlin $nl
 
 done

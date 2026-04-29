@@ -9,8 +9,8 @@ from dataclasses import replace
 import networkx as nx
 import numpy as np
 
-from dsmc_engine import CyclisationEvent
-from polymer_utils import valence_model
+from simulation.dsmc_engine import CyclisationEvent
+from simulation.polymer_utils import valence_model
 
 
 class NetworkBuilder:
@@ -49,6 +49,16 @@ class NetworkBuilder:
         A: float,
         box_volume: float = 1.0,
     ) -> CyclisationEvent:
+        """Register a new ring and draw topological links to existing rings.
+
+        For each existing ring *t* with length nring_t, the per-target
+        linking intensity is:
+            μ = A · nring_t · l_cyc / V_box
+        and the probability of forming at least one link is:
+            p = 1 − exp(−μ)
+
+        A single edge is added with probability p (Bernoulli trial).
+        """
         new_ring_id = self._add_ring(event.ring_length)
         l_cyc = int(event.ring_length)
 

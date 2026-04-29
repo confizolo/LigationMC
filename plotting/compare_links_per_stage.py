@@ -27,14 +27,21 @@ import numpy as np
 import pandas as pd
 
 
-def detect_cols(df: pd.DataFrame) -> dict:
+def detect_cols(df: pd.DataFrame) -> dict[str, str | None]:
+    """Map semantic column names to actual names present in *df*."""
+    def _first_match(candidates: list[str]) -> str | None:
+        for c in candidates:
+            if c in df.columns:
+                return c
+        return None
+
     return {
-        'nring': 'nring' if 'nring' in df.columns else None,
-        'mring': 'mring' if 'mring' in df.columns else None,
-        'nlin': 'nlin' if 'nlin' in df.columns else ('linear_size' if 'linear_size' in df.columns else None),
-        'n_events': 'n_events' if 'n_events' in df.columns else ('n_cyclisations' if 'n_cyclisations' in df.columns else None),
-        'observed_links': 'observed_links' if 'observed_links' in df.columns else ('links' if 'links' in df.columns else None),
-        'targets': 'targets' if 'targets' in df.columns else None,
+        "nring": _first_match(["nring"]),
+        "mring": _first_match(["mring"]),
+        "nlin": _first_match(["nlin", "linear_size"]),
+        "n_events": _first_match(["n_events", "n_cyclisations"]),
+        "observed_links": _first_match(["observed_links", "links"]),
+        "targets": _first_match(["targets"]),
     }
 
 

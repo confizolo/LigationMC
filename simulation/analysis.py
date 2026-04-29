@@ -10,7 +10,7 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
-from polymer_utils import RESULTS_DIR, calculate_valence
+from simulation.polymer_utils import RESULTS_DIR
 
 
 def _system_tag(L: int, mring: int, nring: int, mlin: int, nlin: int) -> str:
@@ -147,13 +147,11 @@ def plot_stages_vs_nlin_nring(records: list[dict[str, float]], out_dir: str = RE
     mlin = mlin[valid]
     stages = stages_raw[valid]
 
-    valence = np.array([calculate_valence(int(nl), int(nr)) for nl, nr in zip(nlin, nring)])
-
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
-    sc = axes[0, 0].scatter(valence * mlin, stages, c=nlin, cmap="viridis", edgecolor="k")
+    sc = axes[0, 0].scatter(nlin * mlin, stages, c=nlin, cmap="viridis", edgecolor="k")
     axes[0, 0].set_xscale("log")
     axes[0, 0].set_yscale("log")
-    axes[0, 0].set_xlabel("valence * mlin")
+    axes[0, 0].set_xlabel("nlin * mlin")
     axes[0, 0].set_ylabel("stages to 50%")
     fig.colorbar(sc, ax=axes[0, 0], label="nlin")
 
@@ -169,7 +167,7 @@ def plot_stages_vs_nlin_nring(records: list[dict[str, float]], out_dir: str = RE
     axes[1, 0].set_xscale("log")
     axes[1, 0].set_yscale("log")
 
-    axes[1, 1].scatter(nring / nlin, stages, c=valence, cmap="cividis", edgecolor="k")
+    sc2 = axes[1, 1].scatter(nring / nlin, stages, c=nlin, cmap="cividis", edgecolor="k")
     axes[1, 1].set_xlabel("nring/nlin")
     axes[1, 1].set_ylabel("stages to 50%")
     axes[1, 1].set_xscale("log")

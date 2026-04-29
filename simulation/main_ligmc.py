@@ -15,7 +15,7 @@ try:
 except ImportError:  # pragma: no cover
     tqdm = None
 
-from analysis import (
+from simulation.analysis import (
     plot_degree_distributions,
     plot_gelation_curves,
     plot_stages_vs_nlin_nring,
@@ -23,9 +23,9 @@ from analysis import (
     save_results_all,
     save_trial_results,
 )
-from dsmc_engine import CyclisationEvent, DSMCEngine
-from network_builder import NetworkBuilder
-from polymer_utils import RESULTS_DIR
+from simulation.dsmc_engine import CyclisationEvent, DSMCEngine
+from simulation.network_builder import NetworkBuilder
+from simulation.polymer_utils import RESULTS_DIR
 
 
 FITTED_K1_DEFAULT = 1.0
@@ -38,6 +38,65 @@ def _first_stage_to_half(fracs: list[float]) -> int | None:
         if val >= 0.5:
             return idx
     return None
+
+
+def _run_stage(
+    network: NetworkBuilder,
+    config: dict[str, Any],
+    stage: int,
+    phi_ref: float,
+    rng: np.random.Generator,
+) -> tuple[float, float, int, list[dict[str, Any]]]:
+    """Run one stage: inject linears, DSMC until exhausted, process events.
+
+    Returns (largest_component_frac, box_length, n_events, event_records).
+    """
+    total_ring_monomers = float(sum(network.ring_lengths.values()))
+    total_monomers = total_ring_monomers + float(config["mlin"] * config["nlin"])
+    box_volume = total_monomers / phi_ref
+    stage_L = float(box_volume ** (1.0 / 3.0))
+
+    linears = [config["nlin"]] * config["mlin"]
+    engine = DSMCEngine(
+        linear_lengths=linears,
+        k1=config["k1"],
+        k2=config["k2"],
+        alpha=config["alpha"],
+        nu=config["nu"],
+        rng=rng,
+    )
+
+    events = engine.run_until_exhausted(max_steps=config["max_steps"])
+    n_events = len(events)
+    event_records = []
+
+    for event in events:
+        if isinstance(event, CyclisationEvent):
+            event = network.process_cyclisation(
+                event,
+                A=config["val_A"],
+                box_volume=box_volume,
+            )
+            event_records.append(
+                {
+                    "stage": stage,
+                    "L": stage_L,
+                    "event_type": "cyclisation",
+                    **asdict(event),
+                }
+            )
+        else:
+            event_records.append(
+                {
+                    "stage": stage,
+                    "L": stage_L,
+                    "event_type": "merge",
+                    **asdict(event),
+                }
+            )
+
+    frac = network.largest_component_fraction()
+    return frac, stage_L, n_events, event_records
 
 
 def run_single_trial(config: dict[str, Any]) -> dict[str, Any]:
@@ -62,52 +121,11 @@ def run_single_trial(config: dict[str, Any]) -> dict[str, Any]:
     phi_ref = initial_monomers / float(config["L"] ** 3)
 
     for stage in range(config["n_stages"]):
-        total_ring_monomers = float(sum(network.ring_lengths.values()))
-        total_monomers = total_ring_monomers + float(config["mlin"] * config["nlin"])
-        box_volume = total_monomers / phi_ref
-        stage_L = float(box_volume ** (1.0 / 3.0))
-        stage_box_lengths.append(stage_L)
-
-        linears = [config["nlin"]] * config["mlin"]
-        engine = DSMCEngine(
-            linear_lengths=linears,
-            k1=config["k1"],
-            k2=config["k2"],
-            alpha=config["alpha"],
-            nu=config["nu"],
-            rng=rng,
-        )
-
-        events = engine.run_until_exhausted(max_steps=config["max_steps"])
-        stage_events.append(len(events))
-
-        for event in events:
-            if isinstance(event, CyclisationEvent):
-                event = network.process_cyclisation(
-                    event,
-                    A=config["val_A"],
-                    box_volume=box_volume,
-                )
-                event_timeline.append(
-                    {
-                        "stage": stage,
-                        "L": stage_L,
-                        "event_type": "cyclisation",
-                        **asdict(event),
-                    }
-                )
-            else:
-                event_timeline.append(
-                    {
-                        "stage": stage,
-                        "L": stage_L,
-                        "event_type": "merge",
-                        **asdict(event),
-                    }
-                )
-
-        frac = network.largest_component_fraction()
+        frac, stage_L, n_events, event_records = _run_stage(network, config, stage, phi_ref, rng)
         stage_fractions.append(frac)
+        stage_box_lengths.append(stage_L)
+        stage_events.append(n_events)
+        event_timeline.extend(event_records)
         degree_distribution = network.degree_distribution()
 
     return {

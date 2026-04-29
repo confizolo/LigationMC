@@ -9,23 +9,42 @@ RESULTS_DIR = "/storage/cmstore02/groups/TAPLab/fconforto-projects/fconforto-oly
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
-def calculate_valence(nlin: int, nring: int, blin: int = 64, bring: int = 512) -> float:
-    """Return the mean of the Poisson valence distribution used for linking."""
-    if nlin <= 0:
-        return 0.0
-    return float((nlin / blin) * (nring / bring) ** -0.6)
-
+# Default Rg values from MD equilibration of 128-monomer chains.
+REFERENCE_N = 128
+RG_RING_128 = 9.9     # Rg of a 128-monomer ring polymer [σ]
+RG_LINEAR_128 = 14.0  # Rg of a 128-monomer linear polymer [σ]
 
 def calculate_polymer_numbers(
     ccsr: float,
     ccsl: float,
     L: float = 200,
-    Rgr_base: float = 9.9,
-    Rgl_base: float = 14.0,
+    Rgr_base: float = RG_RING_128,
+    Rgl_base: float = RG_LINEAR_128,
     Nr: int = 1024,
     Nl: int = 128,
 ) -> tuple[int, int]:
-    """Compute (Mr, Ml) using overlap-concentration scaling from legacy code."""
+    """Compute (Mr, Ml) — polymer counts at given multiples of c*.
+
+    Uses overlap-concentration scaling:
+        Rg(N) = Rg_base · √(N / 128)
+        c* = V_box / V_coil  where  V_coil = (4/3)π Rg³
+        M = floor(c* · concentration_scalar)
+
+    Parameters
+    ----------
+    ccsr : concentration scalar for rings (e.g. 5 → 5 c*)
+    ccsl : concentration scalar for linears (e.g. 0.05 → 0.05 c*)
+    L    : simulation box side length [σ]
+    Rgr_base : Rg of ring polymer at length REFERENCE_N
+    Rgl_base : Rg of linear polymer at length REFERENCE_N
+    Nr   : ring polymer length (monomers)
+    Nl   : linear polymer length (monomers)
+    
+    Returns
+    -------
+    tuple[int, int]
+        (Mr, Ml) polymer counts for rings and linears respectively.
+    """
     rgr_scaled = Rgr_base * math.sqrt(Nr / 128.0)
     rgl_scaled = Rgl_base * math.sqrt(Nl / 128.0)
 

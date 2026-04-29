@@ -11,9 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from analysis import save_json
-from fit_to_md import _js_divergence, simulate_length_pmf
-from polymer_utils import RESULTS_DIR
+from simulation.analysis import save_json
+from simulation.fit_to_md import _js_divergence, simulate_length_pmf
+from simulation.polymer_utils import RESULTS_DIR
 
 DEFAULT_MD_COUNTS_CSV = (
     "/storage/cmstore02/groups/TAPLab/fconforto-projects/"

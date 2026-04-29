@@ -7,7 +7,7 @@ from typing import Union
 
 import numpy as np
 
-from polymer_utils import cyclisation_rate, smoluchowski_kernel
+from simulation.polymer_utils import cyclisation_rate, smoluchowski_kernel
 
 
 @dataclass
@@ -70,6 +70,15 @@ class DSMCEngine:
         return sum(self._linear_population.values())
 
     def _reaction_channels(self) -> tuple[list[tuple[str, int, int]], np.ndarray]:
+        """Build the list of (channel_type, length_i, length_j) tuples
+        and their Gillespie propensities.
+
+        Channels:
+          - ("cyc", i, i) : cyclisation of a linear of length i
+          - ("merge", i, j): end-to-end merge of linears i and j
+
+        Self-merge (i == j) accounts for combinatorial factor n*(n-1).
+        """
         lengths = sorted(self._linear_population)
         channels: list[tuple[str, int, int]] = []
         propensities: list[float] = []
@@ -102,6 +111,13 @@ class DSMCEngine:
         return channels, np.asarray(propensities, dtype=float)
 
     def step(self) -> Event:
+        """Execute one Gillespie SSA direct-method step.
+
+        1. Enumerate all reaction channels and their propensities.
+        2. Draw waiting time τ ~ Exp(a₀) where a₀ = Σ propensities.
+        3. Select a channel proportional to its propensity.
+        4. Execute the selected reaction (merge or cyclisation).
+        """
         if self.n_linear <= 0:
             raise RuntimeError("No linear polymers left to evolve.")
 
@@ -109,10 +125,12 @@ class DSMCEngine:
         if prop.size == 0:
             raise RuntimeError("No available reaction channels while linears remain.")
 
+        # --- Gillespie step 2: draw inter-event time ---
         a0 = float(prop.sum())
         tau = float(self._rng.exponential(1.0 / a0))
         self.time += tau
 
+        # --- Gillespie step 3: select reaction channel ---
         choice = float(self._rng.random() * a0)
         cumulative = 0.0
         picked = 0
@@ -122,6 +140,7 @@ class DSMCEngine:
                 picked = idx
                 break
 
+        # --- Gillespie step 4: execute selected reaction ---
         channel, i, j = channels[picked]
 
         if channel == "merge":

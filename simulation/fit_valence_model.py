@@ -16,8 +16,8 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
-from analysis import save_json
-from polymer_utils import RESULTS_DIR
+from simulation.analysis import save_json
+from simulation.polymer_utils import RESULTS_DIR
 
 try:
     import pandas as pd
@@ -78,55 +78,40 @@ def _infer_n_total_from_companion(md_data: pd.DataFrame, csv_path: str | None = 
     return pd.to_numeric(inferred, errors="coerce")
 
 
-def _prepare_dataframe(md_data: pd.DataFrame, max_linear_size: int = 256, csv_path: str | None = None) -> pd.DataFrame:
+def _resolve_columns(md_data: pd.DataFrame) -> dict[str, str | None]:
+    """Map semantic column names to actual column names in the DataFrame."""
     linear_col = _resolve_column(md_data, ["ring_size", "linear_size", "nlin", "length", "l_cyc"])
     links_col = _resolve_column(md_data, ["avg_links_created", "avg_links", "mean_links", "lambda"])
 
-    n_total_col: str | None = None
+    n_total_col = None
     try:
         n_total_col = _resolve_column(md_data, ["mring", "n_total", "ring_count"])
     except KeyError:
-        n_total_col = None
+        pass
 
-    n_samples_col: str | None = None
+    n_samples_col = None
     try:
         n_samples_col = _resolve_column(md_data, ["n_samples", "samples", "count", "n"])
     except KeyError:
-        n_samples_col = None
+        pass
 
-    std_col: str | None = None
+    std_col = None
     try:
         std_col = _resolve_column(md_data, ["std_links_created", "std_links", "std", "sigma"])
     except KeyError:
-        std_col = None
+        pass
 
-    keep_cols = [linear_col, links_col]
-    if n_total_col:
-        keep_cols.append(n_total_col)
-    elif "n_total" in md_data.columns:
-        keep_cols.append("n_total")
-    elif "nring" in md_data.columns:
-        keep_cols.append("nring")
-    else:
-        raise KeyError(
-            "Could not find a density/count column. Expected one of: mring, n_total, ring_count "
-            "(or nring with companion summary_rep.csv metadata)."
-        )
-    if n_samples_col:
-        keep_cols.append(n_samples_col)
-    if std_col:
-        keep_cols.append(std_col)
+    return {
+        "linear_size": linear_col,
+        "avg_links_created": links_col,
+        "n_total": n_total_col,
+        "n_samples": n_samples_col,
+        "std_links_created": std_col,
+    }
 
-    df = md_data[keep_cols].rename(
-        columns={
-            linear_col: "linear_size",
-            links_col: "avg_links_created",
-            **({n_total_col: "n_total"} if n_total_col else {}),
-            **({n_samples_col: "n_samples"} if n_samples_col else {}),
-            **({std_col: "std_links_created"} if std_col else {}),
-        }
-    )
 
+def _infer_missing_columns(df: pd.DataFrame, md_data: pd.DataFrame, csv_path: str | None) -> pd.DataFrame:
+    """Fill n_total from companion metadata if absent."""
     if "n_total" not in df.columns:
         inferred_n_total = _infer_n_total_from_companion(md_data, csv_path=csv_path)
         if inferred_n_total is not None:
@@ -150,14 +135,20 @@ def _prepare_dataframe(md_data: pd.DataFrame, max_linear_size: int = 256, csv_pa
         raise KeyError(
             "Could not find nring column required by basis: (nring * mring * l_cyc) / V_box"
         )
+    return df
 
+
+def _filter_and_coerce(df: pd.DataFrame, max_linear_size: int) -> pd.DataFrame:
+    """Coerce types, drop invalid rows, and apply size filter."""
     df["linear_size"] = pd.to_numeric(df["linear_size"], errors="coerce")
     df["avg_links_created"] = pd.to_numeric(df["avg_links_created"], errors="coerce")
     df["n_total"] = pd.to_numeric(df["n_total"], errors="coerce")
+    
     if "n_samples" not in df.columns:
         df["n_samples"] = 1.0
     else:
         df["n_samples"] = pd.to_numeric(df["n_samples"], errors="coerce").fillna(1.0)
+        
     if "std_links_created" in df.columns:
         df["std_links_created"] = pd.to_numeric(df["std_links_created"], errors="coerce")
 
@@ -171,6 +162,40 @@ def _prepare_dataframe(md_data: pd.DataFrame, max_linear_size: int = 256, csv_pa
         raise ValueError("No valid rows remain after filtering valence data.")
 
     return df.reset_index(drop=True)
+
+
+def _prepare_dataframe(md_data: pd.DataFrame, max_linear_size: int = 256, csv_path: str | None = None) -> pd.DataFrame:
+    col_map = _resolve_columns(md_data)
+    
+    keep_cols = [col_map["linear_size"], col_map["avg_links_created"]]
+    if col_map["n_total"]:
+        keep_cols.append(col_map["n_total"])
+    elif "n_total" in md_data.columns:
+        keep_cols.append("n_total")
+    elif "nring" in md_data.columns:
+        keep_cols.append("nring")
+    else:
+        raise KeyError(
+            "Could not find a density/count column. Expected one of: mring, n_total, ring_count "
+            "(or nring with companion summary_rep.csv metadata)."
+        )
+        
+    if col_map["n_samples"]:
+        keep_cols.append(col_map["n_samples"])
+    if col_map["std_links_created"]:
+        keep_cols.append(col_map["std_links_created"])
+
+    rename_map = {
+        col_map["linear_size"]: "linear_size",
+        col_map["avg_links_created"]: "avg_links_created",
+    }
+    if col_map["n_total"]: rename_map[col_map["n_total"]] = "n_total"
+    if col_map["n_samples"]: rename_map[col_map["n_samples"]] = "n_samples"
+    if col_map["std_links_created"]: rename_map[col_map["std_links_created"]] = "std_links_created"
+
+    df = md_data[keep_cols].rename(columns=rename_map)
+    df = _infer_missing_columns(df, md_data, csv_path)
+    return _filter_and_coerce(df, max_linear_size)
 
 
 def _basis_from_df(df: pd.DataFrame, box_volume: float) -> np.ndarray:
