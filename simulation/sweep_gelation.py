@@ -118,11 +118,12 @@ def main() -> None:
     parser.add_argument("--nlin_step", type=int, default=16)
     parser.add_argument("--ccsr", type=float, default=5.0)
     parser.add_argument("--ccsl", type=float, default=0.05)
-    parser.add_argument("--L", type=float, default=80.0)
+    parser.add_argument("--L", type=float, default=200)
     parser.add_argument("--trials", type=int, default=1000)
     parser.add_argument("--n_stages", type=int, default=100)
     parser.add_argument("--workers", type=int, default=32)
     parser.add_argument("--skip_plots", action="store_true", help="Skip plotting step")
+    parser.add_argument("--resume", action="store_true", help="Skip systems already present in the summary CSV")
     parser.add_argument("--out_dir", type=str, default=RESULTS_DIR)
     
     # Engine defaults matching main_ligmc
@@ -149,6 +150,25 @@ def main() -> None:
         with open(csv_path, "w") as f:
             f.write("L,mring,nring,mlin,nlin,mean_stages,std_stages,n_trials\n")
 
+    completed_tags = set()
+    if args.resume and os.path.exists(csv_path):
+        with open(csv_path, "r") as f:
+            lines = f.readlines()[1:]  # skip header
+            for line in lines:
+                parts = line.strip().split(",")
+                if len(parts) >= 5:
+                    try:
+                        L_val = float(parts[0])
+                        mring_val = int(float(parts[1]))
+                        nring_val = int(float(parts[2]))
+                        mlin_val = int(float(parts[3]))
+                        nlin_val = int(float(parts[4]))
+                        tag = f"L{L_val}_mring{mring_val}_nring{nring_val}_mlin{mlin_val}_nlin{nlin_val}"
+                        completed_tags.add(tag)
+                    except ValueError:
+                        continue
+        print(f"Resuming: found {len(completed_tags)} systems already completed in summary CSV.")
+
     sweep_results = {}
     
     iterator = tqdm(systems, desc="Systems") if tqdm else systems
@@ -156,6 +176,9 @@ def main() -> None:
     for sys_cfg in iterator:
         tag = f"L{sys_cfg['L']}_mring{sys_cfg['mring']}_nring{sys_cfg['nring']}_mlin{sys_cfg['mlin']}_nlin{sys_cfg['nlin']}"
         
+        if args.resume and tag in completed_tags:
+            continue
+            
         trial_results = run_trials_for_system(
             sys_cfg=sys_cfg,
             trials=args.trials,
