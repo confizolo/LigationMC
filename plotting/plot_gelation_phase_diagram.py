@@ -58,72 +58,17 @@ def plot_gelation_phase_diagram(df: pd.DataFrame, out_dir: str, val_A: float = F
     box_volume = L**3
     df["valence"] = df.apply(lambda row: valence_model(row["nlin"], row["nring"], val_A, 1.0) / box_volume, axis=1)
     
-    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
     
     # Common maps
     cmap_nlin = "viridis"
     cmap_nring = "plasma"
-    
-    # ---------------------------------------------------------
-    # Panel 1 (0,0): valence * mlin vs mean_stages
-    # ---------------------------------------------------------
-    ax = axes[0, 0]
-    x_val = df["valence"] * df["mlin"]
-    y_val = df["mean_stages"]
-    
-    sc = ax.scatter(x_val, y_val, c=df["nlin"], cmap=cmap_nlin, edgecolor="k", zorder=2)
-    
-    # Per-nlin power law fits
-    slopes = []
-    nlins_for_slopes = []
     unique_nlins = sorted(df["nlin"].unique())
     
-    for nlin in unique_nlins:
-        sub = df[df["nlin"] == nlin]
-        if len(sub) > 1:
-            x_sub = sub["valence"] * sub["mlin"]
-            y_sub = sub["mean_stages"]
-            A, B = _fit_power_law(x_sub.to_numpy(), y_sub.to_numpy())
-            if not np.isnan(B):
-                slopes.append(B)
-                nlins_for_slopes.append(nlin)
-                x_fit = np.linspace(x_sub.min(), x_sub.max(), 100)
-                y_fit = A * x_fit**B
-                ax.plot(x_fit, y_fit, "k-", alpha=0.3, zorder=1)
-                
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel(r"$(\lambda \times m_{lin})$")
-    ax.set_ylabel("Stages to 50% gelation")
-    fig.colorbar(sc, ax=ax, label=r"$N_{lin}$")
-    
     # ---------------------------------------------------------
-    # Panel 2 (0,1): nlin vs slope
+    # Panel 1: nlin vs mean_stages
     # ---------------------------------------------------------
-    ax = axes[0, 1]
-    if len(slopes) > 0:
-        # Convert to absolute slopes to allow log-log plotting if desired, 
-        # or just linear depending on data. Let's do abs(slope) for log plot.
-        abs_slopes = np.abs(slopes)
-        ax.scatter(nlins_for_slopes, abs_slopes, c=nlins_for_slopes, cmap=cmap_nlin, edgecolor="k")
-        
-        # Global power law for slopes
-        A_s, B_s = _fit_power_law(np.array(nlins_for_slopes), abs_slopes)
-        if not np.isnan(B_s):
-            x_fit = np.linspace(min(nlins_for_slopes), max(nlins_for_slopes), 100)
-            y_fit = A_s * x_fit**B_s
-            ax.plot(x_fit, y_fit, "r--", label=f"slope $\\propto N_{{lin}}^{{{B_s:.2f}}}$")
-            ax.legend()
-            
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_xlabel(r"$N_{lin}$")
-    ax.set_ylabel(r"|Slope| from Panel 1")
-    
-    # ---------------------------------------------------------
-    # Panel 3 (1,0): nlin vs mean_stages
-    # ---------------------------------------------------------
-    ax = axes[1, 0]
+    ax = axes[0]
     sc3 = ax.scatter(df["nlin"], df["mean_stages"], c=df["nring"], cmap=cmap_nring, edgecolor="k")
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -132,9 +77,9 @@ def plot_gelation_phase_diagram(df: pd.DataFrame, out_dir: str, val_A: float = F
     fig.colorbar(sc3, ax=ax, label=r"$N_{ring}$")
     
     # ---------------------------------------------------------
-    # Panel 4 (1,1): nring vs mean_stages
+    # Panel 2: nring vs mean_stages
     # ---------------------------------------------------------
-    ax = axes[1, 1]
+    ax = axes[1]
     sc4 = ax.scatter(df["nring"], df["mean_stages"], c=df["nlin"], cmap=cmap_nlin, edgecolor="k", zorder=2)
     
     for nlin in unique_nlins:
