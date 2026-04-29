@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from simulation.polymer_utils import RESULTS_DIR, valence_model
+from simulation.main_ligmc import FITTED_A_DEFAULT
 
 
 def _fit_power_law(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
@@ -30,7 +31,7 @@ def _fit_power_law(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
     return A, B
 
 
-def plot_gelation_phase_diagram(df: pd.DataFrame, out_dir: str, val_A: float = 1.871589e-05) -> str:
+def plot_gelation_phase_diagram(df: pd.DataFrame, out_dir: str, val_A: float = FITTED_A_DEFAULT) -> str:
     """Create 2x2 phase diagram plot from summary dataframe."""
     os.makedirs(out_dir, exist_ok=True)
     
@@ -162,7 +163,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Plot gelation phase diagram from sweep summary.")
     parser.add_argument("--sweep_csv", type=str, required=True, help="Path to sweep_summary.csv")
     parser.add_argument("--out_dir", type=str, default=RESULTS_DIR)
-    parser.add_argument("--val_A", type=float, default=1.871589e-05, help="Valence model A parameter")
+    parser.add_argument("--val_A", type=float, default=FITTED_A_DEFAULT, help="Valence model A parameter")
     args = parser.parse_args()
 
     df = pd.read_csv(args.sweep_csv)

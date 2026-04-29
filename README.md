@@ -30,7 +30,7 @@ The DSMC engine uses Smoluchowski coagulation ($k_1$) and cyclisation ($k_2$) ra
 |---|---|---|
 | `k1` | 1.0 | Reference scale |
 | `k2` | 12840.85 | PMF fit (`fit_to_md.py`) |
-| `A` | 1.87 × 10⁻⁵ | Valence fit (`fit_valence_model.py`) |
+| `A` | 0.2093 | Valence fit (`fit_valence_model.py`) |
 
 ---
 
@@ -100,7 +100,7 @@ Key CLI arguments:
 | `--workers` | Parallel workers | 1 |
 | `--L` | Reference box side length (σ) | 80 |
 | `--k1 / --k2` | DSMC rate constants | 1.0 / 12840.85 |
-| `--val_A` | Linking prefactor | 1.87e-5 |
+| `--val_A` | Linking prefactor | 0.2093 |
 | `--nu` | Flory exponent | 0.5 |
 | `--skip_plots` | Skip plot generation | False |
 

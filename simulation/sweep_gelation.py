@@ -17,7 +17,7 @@ except ImportError:  # pragma: no cover
     tqdm = None
 
 from simulation.analysis import save_json, save_results_all
-from simulation.main_ligmc import FITTED_K1_DEFAULT, FITTED_K2_DEFAULT, _first_stage_to_half, run_single_trial
+from simulation.main_ligmc import FITTED_K1_DEFAULT, FITTED_K2_DEFAULT, FITTED_A_DEFAULT, _first_stage_to_half, run_single_trial
 from simulation.polymer_utils import RESULTS_DIR, calculate_polymer_numbers
 
 
@@ -124,7 +124,7 @@ def main() -> None:
     parser.add_argument("--k2", type=float, default=FITTED_K2_DEFAULT)
     parser.add_argument("--alpha", type=float, default=1.0)
     parser.add_argument("--nu", type=float, default=0.5)
-    parser.add_argument("--val_A", type=float, default=1.871589e-05)
+    parser.add_argument("--val_A", type=float, default=FITTED_A_DEFAULT)
     parser.add_argument("--max_steps", type=int, default=1000000)
 
     args = parser.parse_args()
