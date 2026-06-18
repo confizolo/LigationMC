@@ -99,6 +99,7 @@ function parse_commandline()
 end
 
 function build_system_grid(nrings, nlins, ccsr, ccsl, L)
+    # Construct physically valid systems where both ring and linear counts are positive.
     systems = Dict{String, Any}[]
     for nring in nrings
         for nlin in nlins
@@ -142,6 +143,7 @@ function main()
                         nring_val = round(Int, parse(Float64, parts[3]))
                         mlin_val = round(Int, parse(Float64, parts[4]))
                         nlin_val = round(Int, parse(Float64, parts[5]))
+                        # Tag format must match the one used for fresh outputs.
                         tag = "L$(L_val)_mring$(mring_val)_nring$(nring_val)_mlin$(mlin_val)_nlin$(nlin_val)"
                         push!(completed_tags, tag)
                     catch
@@ -195,12 +197,8 @@ function main()
         end
         
         if !isempty(stages_to_half)
-            mean_s = sum(stages_to_half) / length(stages_to_half)
-            std_s = length(stages_to_half) > 1 ? std(stages_to_half) : 0.0 # Note: need Statistics module for std
-            
-            # Simple std calculation without importing Statistics
-            var_s = sum((x - mean_s)^2 for x in stages_to_half) / (length(stages_to_half) - 1)
-            std_s = length(stages_to_half) > 1 ? sqrt(var_s) : 0.0
+            mean_s = mean(stages_to_half)
+            std_s = length(stages_to_half) > 1 ? std(stages_to_half) : 0.0
         else
             mean_s = NaN
             std_s = NaN

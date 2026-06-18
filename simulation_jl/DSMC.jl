@@ -51,6 +51,8 @@ function DSMCEngine(linear_lengths::Vector{Int}, k1::Float64, k2::Float64; alpha
 end
 
 function reaction_channels(engine::DSMCEngine)
+    # Build all currently allowed reactions and their propensities.
+    # We enumerate cyclisation channels (single length) and merge channels (length pairs).
     lengths = sort(collect(keys(engine.linear_population)))
     channels = Tuple{Symbol, Int, Int}[]
     propensities = Float64[]
@@ -102,6 +104,7 @@ function step!(engine::DSMCEngine)::Event
     end
     
     a0 = sum(prop)
+    # Standard Gillespie waiting time draw.
     tau = randexp(engine.rng) / a0
     engine.time += tau
     
@@ -123,6 +126,7 @@ function step!(engine::DSMCEngine)::Event
     channel, i, j = channels[picked]
     
     if channel == :merge
+        # Consumes two linears and creates one longer linear.
         engine.linear_population[i] -= 1
         if engine.linear_population[i] == 0
             delete!(engine.linear_population, i)
@@ -139,6 +143,7 @@ function step!(engine::DSMCEngine)::Event
         
         return MergeEvent(engine.time, i, j, new_length)
     else
+        # Cyclisation consumes one linear and creates one new ring entry.
         engine.linear_population[i] -= 1
         if engine.linear_population[i] == 0
             delete!(engine.linear_population, i)
@@ -151,6 +156,7 @@ function step!(engine::DSMCEngine)::Event
 end
 
 function run_until_exhausted!(engine::DSMCEngine; max_steps::Int=50000)
+    # Run SSA events until there are no linear chains left in the stage.
     events = Event[]
     steps = 0
     while engine.n_linear > 0

@@ -27,6 +27,7 @@ function add_ring!(builder::NetworkBuilder, length::Int)::Int
 end
 
 function process_cyclisation!(builder::NetworkBuilder, event::CyclisationEvent, A::Float64, box_volume::Float64=1.0)
+    # Add the freshly cyclised ring as a new graph node.
     new_ring_id = add_ring!(builder, event.ring_length)
     l_cyc = event.ring_length
     
@@ -43,6 +44,7 @@ function process_cyclisation!(builder::NetworkBuilder, event::CyclisationEvent, 
             continue
         end
         
+        # Bernoulli-per-target approximation from Poisson mean mu.
         mu = A * Float64(nring_target) * Float64(l_cyc) / box_volume
         if mu > 0.0
             p = 1.0 - exp(-mu)

@@ -23,6 +23,7 @@ function first_stage_to_half(fracs::Vector{Float64})::Union{Int, Nothing}
 end
 
 function run_stage!(network::NetworkBuilder, config::Dict, stage::Int, phi_ref::Float64, rng::AbstractRNG)
+    # Keep the reference monomer density fixed while the ring population grows.
     total_ring_monomers = Float64(sum(network.ring_lengths))
     total_monomers = total_ring_monomers + Float64(config["mlin"] * config["nlin"])
     box_volume = total_monomers / phi_ref
@@ -85,7 +86,7 @@ function run_single_trial(config::Dict{String, Any})::Dict{String, Any}
     end
     phi_ref = initial_monomers / (Float64(config["L"])^3)
     
-    # We use 1-based indexing for Julia (so stage ranges 1 to n_stages)
+    # We use 1-based indexing for Julia (stage = 1,2,...,n_stages).
     for stage in 1:config["n_stages"]
         frac, stage_L, n_events, event_records = run_stage!(network, config, stage, phi_ref, rng)
         push!(stage_fractions, frac)
@@ -125,6 +126,7 @@ function run_trials_for_system(sys_cfg::Dict{String, Any}; trials::Int=100, n_st
     
     results = Vector{Dict{String, Any}}(undef, trials)
     
+    # Dynamic scheduling helps when some trials gel much earlier than others.
     @threads :dynamic for t in 1:trials
         config = copy(config_base)
         config["seed"] = 42 + t * 1337
