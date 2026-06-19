@@ -1,8 +1,8 @@
 println("Initializing simulation modules (this may take a moment on first run)...")
 include("PolymerUtils.jl")
-include("DSMC.jl")
+include("GillespieSSA.jl")
 include("Network.jl")
-include("Main.jl")
+include("Simulation.jl")
 println("All modules loaded successfully.")
 
 module SweepGelation
@@ -11,7 +11,7 @@ using ArgParse
 using JSON3
 using Statistics
 using ProgressMeter
-using ..MainLigMC
+using ..SimulationMC
 using ..PolymerUtils
 
 function parse_commandline()
@@ -65,11 +65,11 @@ function parse_commandline()
         "--k1"
             help = "Merge rate constant"
             arg_type = Float64
-            default = MainLigMC.FITTED_K1_DEFAULT
+            default = SimulationMC.FITTED_K1_DEFAULT
         "--k2"
             help = "Cyclisation rate constant"
             arg_type = Float64
-            default = MainLigMC.FITTED_K2_DEFAULT
+            default = SimulationMC.FITTED_K2_DEFAULT
         "--alpha"
             help = "Smoluchowski alpha parameter"
             arg_type = Float64
@@ -81,7 +81,7 @@ function parse_commandline()
         "--val_A"
             help = "Valence model parameter A"
             arg_type = Float64
-            default = MainLigMC.FITTED_A_DEFAULT
+            default = SimulationMC.FITTED_A_DEFAULT
         "--max_steps"
             help = "Max steps per stage"
             arg_type = Int

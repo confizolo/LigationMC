@@ -1,10 +1,10 @@
-module MainLigMC
+module SimulationMC
 
 using Random
 using JSON3
 using Base.Threads
 using ..PolymerUtils
-using ..DSMC
+using ..GillespieSSA
 using ..Network
 
 export run_single_trial, run_trials_for_system
