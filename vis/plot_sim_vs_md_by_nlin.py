@@ -4,22 +4,155 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
-import sys
 from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# Ensure repo root is on sys.path for cross-package imports.
-_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+# ---------------------------------------------------------------------------
+# Constants & helpers previously imported from the (now-removed) simulation pkg
+# ---------------------------------------------------------------------------
+RESULTS_DIR = (
+    "/storage/cmstore02/groups/TAPLab/fconforto-projects/fconforto-olympic-gels-mc"
+)
+FITTED_K1_DEFAULT = 1.0
+FITTED_K2_DEFAULT = 12933.579888871815
 
-from simulation.analysis import save_json
-from simulation.fit_to_md import _js_divergence, simulate_length_pmf
-from simulation.polymer_utils import RESULTS_DIR
+
+def save_json(data: dict, filename: str, out_dir: str) -> str:
+    """Write *data* as JSON to *out_dir*/*filename* and return the path."""
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, filename)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2)
+    return path
+
+
+def _kl_divergence(p: dict[int, float], q: dict[int, float]) -> float:
+    """KL(P || Q) over shared keys with p_i > 0 and q_i > 0."""
+    kl = 0.0
+    for k in p:
+        pk = p[k]
+        qk = q.get(k, 0.0)
+        if pk > 0.0 and qk > 0.0:
+            kl += pk * math.log(pk / qk)
+    return kl
+
+
+def _js_divergence(p: dict[int, float], q: dict[int, float]) -> float:
+    """Jensen-Shannon divergence between two PMF dicts."""
+    all_keys = set(p) | set(q)
+    m: dict[int, float] = {}
+    for k in all_keys:
+        m[k] = 0.5 * (p.get(k, 0.0) + q.get(k, 0.0))
+    return 0.5 * _kl_divergence(p, m) + 0.5 * _kl_divergence(q, m)
+
+
+def simulate_length_pmf(
+    k1: float,
+    k2: float,
+    nlin: int,
+    mlin: int,
+    nu: float,
+    n_trials: int,
+    rng: np.random.Generator,
+) -> dict[int, float]:
+    """Gillespie SSA producing the cyclised-ring-length PMF.
+
+    Starts with *mlin* linears of length *nlin*. Merge and cyclisation
+    propensities follow the Smoluchowski kernel with exponent *nu* and
+    cyclisation exponent -4*nu.
+
+    Returns a normalised PMF dict {length: probability}.
+    """
+    alpha = 1.0  # fixed exponent in the merge kernel
+    counts: dict[int, int] = {}
+
+    for _ in range(n_trials):
+        # populations: length -> count of linear chains with that length
+        pops: dict[int, int] = {nlin: mlin}
+
+        while True:
+            # Collect species list
+            species = [(length, cnt) for length, cnt in pops.items() if cnt > 0]
+            if not species:
+                break
+
+            # --- build propensity list ---
+            propensities: list[tuple[float, str, Any]] = []
+
+            # Merge propensities: k1 * ni * nj * K(i,j)
+            for idx_a, (la, na) in enumerate(species):
+                for idx_b in range(idx_a, len(species)):
+                    lb, nb = species[idx_b]
+                    if idx_a == idx_b:
+                        if na < 2:
+                            continue
+                        factor = na * (na - 1)  # ordered pairs, matching Julia DSMC
+                    else:
+                        factor = na * nb
+                    if factor <= 0:
+                        continue
+                    kernel = (la ** (-alpha) + lb ** (-alpha)) * (la**nu + lb**nu)
+                    rate = k1 * factor * kernel
+                    if rate > 0:
+                        propensities.append((rate, "merge", (la, lb)))
+
+            # Cyclisation propensities: ni * k2 * length^(-4*nu)
+            for la, na in species:
+                if na <= 0:
+                    continue
+                rate = na * k2 * la ** (-4.0 * nu)
+                if rate > 0:
+                    propensities.append((rate, "cycle", (la,)))
+
+            if not propensities:
+                break
+
+            total_rate = sum(r for r, _, _ in propensities)
+            if total_rate <= 0:
+                break
+
+            # Gillespie draw
+            r1 = rng.random()
+            threshold = r1 * total_rate
+            cumsum = 0.0
+            chosen = propensities[-1]
+            for prop in propensities:
+                cumsum += prop[0]
+                if cumsum >= threshold:
+                    chosen = prop
+                    break
+
+            _, event_type, payload = chosen
+
+            if event_type == "merge":
+                la, lb = payload
+                # Remove one of each reactant
+                pops[la] -= 1
+                if pops[la] <= 0:
+                    del pops[la]
+                pops[lb] = pops.get(lb, 0) - 1
+                if pops[lb] <= 0:
+                    del pops[lb]
+                # Add merged product
+                new_len = la + lb
+                pops[new_len] = pops.get(new_len, 0) + 1
+            else:  # cycle
+                la = payload[0]
+                pops[la] -= 1
+                if pops[la] <= 0:
+                    del pops[la]
+                counts[la] = counts.get(la, 0) + 1
+
+    # Normalise to PMF
+    total = sum(counts.values())
+    if total <= 0:
+        return {}
+    return {k: v / total for k, v in sorted(counts.items())}
 
 DEFAULT_MD_COUNTS_CSV = (
     "/storage/cmstore02/groups/TAPLab/fconforto-projects/"

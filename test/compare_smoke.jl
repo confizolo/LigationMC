@@ -1,8 +1,3 @@
-include("../src/PolymerUtils.jl")
-include("../src/GillespieSSA.jl")
-include("../src/ParticleDSMC.jl")
-include("../src/Network.jl")
-include("../src/MDMapping.jl")
 include("../src/CompareDSMC.jl")
 
 println("Running smoke test for DSMC methods...")

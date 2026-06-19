@@ -3,20 +3,28 @@
 from __future__ import annotations
 
 import argparse
-import sys
 import os
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# Ensure repo root is on sys.path for cross-package imports.
-_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+# ---------------------------------------------------------------------------
+# Constants & helpers previously imported from the (now-removed) simulation pkg
+# ---------------------------------------------------------------------------
+RESULTS_DIR = (
+    "/storage/cmstore02/groups/TAPLab/fconforto-projects/fconforto-olympic-gels-mc"
+)
+FITTED_A_DEFAULT = 0.20927677484111143
 
-from simulation.polymer_utils import RESULTS_DIR, valence_model
-from simulation.main_ligmc import FITTED_A_DEFAULT
+
+def valence_model(
+    l_cyc: float, n_total: float, A: float, box_volume: float = 1.0
+) -> float:
+    """Mean-field valence: A * n_total * l_cyc / box_volume (> 0 args)."""
+    if l_cyc > 0 and n_total > 0 and A > 0:
+        return A * n_total * l_cyc / box_volume
+    return 0.0
 
 
 def _fit_power_law(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:

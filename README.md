@@ -1,6 +1,8 @@
-# LigMC - Julia Simulation + Python Plotting
+# LigMC — Julia Simulation + Python Plotting
 
-This directory keeps the Julia implementation for simulation and sweep execution, while retaining Python plotting scripts for post-processing figures.
+DSMC-driven Monte Carlo simulation of topological linking and gelation in
+ring-linear polymer blends. Julia handles simulation and sweeps; Python
+handles post-processing plots.
 
 ## Model summary
 
@@ -8,10 +10,11 @@ At each stage:
 
 1. `mlin` linear polymers of length `nlin` are injected.
 2. A Gillespie SSA evolves merge and cyclisation events until no linear chains remain.
-3. Every cyclisation creates a new ring that can link to existing rings with Poisson intensity
+3. Every cyclisation creates a new ring that can link to existing rings with
+   Bernoulli probability derived from the Poisson mean
 
 $$
-\mu_t = A\,\frac{n_{\mathrm{ring},t}\,\ell_{\mathrm{cyc}}}{V_{\mathrm{box}}}.
+\mu = A\,\frac{n_{\mathrm{ring,target}}\,\ell_{\mathrm{cyc}}}{V_{\mathrm{box}}}.
 $$
 
 4. The ring graph is updated and gelation is detected from the largest connected component fraction.
@@ -24,33 +27,48 @@ $$
 L_{\mathrm{stage}} = \left(\frac{M_{\mathrm{total}}}{\phi_{\mathrm{ref}}}\right)^{1/3}.
 $$
 
+## Fitted parameters
+
+| Parameter | Value | Provenance |
+|---|---|---|
+| `k1` | 1.0 | Reference scale (arbitrary) |
+| `k2` | 12 933.58 | Fitted from MD cyclised-length PMF (nlin=64); JS div = 3.4 × 10⁻⁴ |
+| `A` | 0.2093 | Fitted from MD valence-by-size data; RMSE = 0.133 |
+| `ν` | 0.5 | Ideal chain (Rouse) scaling |
+
+See `_smoke_results/fitted_k1_k2.json` and `_smoke_results/fitted_valence_model.json` for full outputs.
+
 ## Repository layout
 
 ```
 6_LigMC/
-├── simulation_jl/
-│   ├── Project.toml
-│   ├── Manifest.toml
-│   ├── PolymerUtils.jl      # c* scaling, kernels, and constants
-│   ├── DSMC.jl              # Gillespie engine (merge + cyclisation)
-│   ├── Network.jl           # Ring graph and linking process
-│   ├── Main.jl              # Single-trial and multitrial orchestration
-│   ├── RunSingle.jl         # CLI for one system configuration
-│   ├── SweepGelation.jl     # Grid sweep CLI
-│   └── ScalingMrNr.jl       # Scaling analysis for mr*nr vs nr
-├── plotting/
+├── src/
+│   ├── Project.toml            # Julia dependencies
+│   ├── Manifest.toml           # Resolved versions
+│   ├── PolymerUtils.jl         # c* scaling, kernels, constants
+│   ├── DSMC.jl                 # Gillespie SSA engine (merge + cyclisation)
+│   ├── Network.jl              # Ring graph and Bernoulli linking
+│   ├── Simulation.jl           # Multi-stage trial runner
+│   ├── RunSingle.jl            # CLI: single system
+│   ├── SweepGelation.jl        # CLI: grid sweep
+│   └── ScalingMrNr.jl          # CLI: m_r·n_r scaling analysis
+├── vis/
 │   ├── compare_gel_point_time.py
 │   ├── compare_links_per_stage.py
 │   ├── plot_gelation_phase_diagram.py
 │   └── plot_sim_vs_md_by_nlin.py
-├── run_systems.sh           # Batch runner for the MD-matched system list
+├── _smoke_results/             # Diagnostic plots + symlinks to cmstore fits
+├── gel_time_compare.csv        # 16-system sim-vs-MD gelation times
+├── implementation_plan.md      # v2 design document
+├── task.md                     # Execution checklist
+├── plan.md                     # Cleanup & completion plan
 └── README.md
 ```
 
 ## Setup
 
 ```bash
-cd simulation_jl
+cd src
 julia -e 'using Pkg; Pkg.activate("."); Pkg.instantiate()'
 cd ..
 ```
@@ -60,70 +78,64 @@ cd ..
 Run one system:
 
 ```bash
-julia --project=simulation_jl simulation_jl/RunSingle.jl \
-    --L 80 --mring 78 --nring 512 --mlin 6 --nlin 64 \
+julia --project=src src/RunSingle.jl \
+    --mring 78 --nring 512 --mlin 6 --nlin 64 \
     --trials 1000 --n_stages 100 --out_dir ./results
 ```
 
-Run the standard 16-system matrix:
+Run the standard 16-system matrix with a sweep restricted to the MD-matched grid:
 
 ```bash
-bash run_systems.sh
-```
-
-Run a parameter sweep:
-
-```bash
-julia --project=simulation_jl simulation_jl/SweepGelation.jl \
-    --nring_min 256 --nring_max 2048 --nring_step 16 \
-    --nlin_min 64 --nlin_max 512 --nlin_step 16 \
+julia --project=src src/SweepGelation.jl \
+    --nring_min 256 --nring_max 1040 --nring_step 256 \
+    --nlin_min 64 --nlin_max 176 --nlin_step 32 \
     --trials 1000 --n_stages 100 --L 80 --resume \
     --out_dir ./results
+```
+
+Run a fine-grained parameter sweep:
+
+```bash
+julia --project=src src/SweepGelation.jl \
+    --nring_min 256 --nring_max 1040 --nring_step 16 \
+    --nlin_min 64 --nlin_max 512 --nlin_step 16 \
+    --trials 1000 --n_stages 100 --L 80 --resume \
+    --out_dir /storage/cmstore02/.../sweepL80
+```
+
+Scaling analysis:
+
+```bash
+julia --project=src src/ScalingMrNr.jl \
+    --nr_min 64 --nr_max 4096 --nr_step 16 --L 80 --ccsr 5.0
 ```
 
 Plot from sweep results (Python):
 
 ```bash
-python -m plotting.plot_gelation_phase_diagram \
-    --sweep_csv ./results/sweep_summary.csv \
-    --out_dir ./results
+python vis/plot_gelation_phase_diagram.py \
+    --sweep_csv /path/to/sweep_summary.csv
+
+python vis/plot_sim_vs_md_by_nlin.py \
+    --md_csv /path/to/dist_cyclized_linear_length_by_nlin_all_systems.csv \
+    --fit_json _smoke_results/fitted_k1_k2.json
 ```
 
-## Scaling of mr*nr with nr
+## Production results (cmstore)
 
-With the concentration construction used in `calculate_polymer_numbers`, ring count satisfies
+All production results live on cmstore:
 
-$$
-m_r \propto R_g(n_r)^{-3},
-\qquad
-R_g(n_r) \propto n_r^{1/2}
-\Rightarrow
-m_r \propto n_r^{-3/2}.
-$$
-
-Therefore,
-
-$$
-m_r n_r \propto n_r^{-1/2}.
-$$
-
-To compute this directly and fit the exponent numerically:
-
-```bash
-julia --project=simulation_jl simulation_jl/ScalingMrNr.jl \
-    --nr_min 64 --nr_max 4096 --nr_step 16 --L 80 --ccsr 5.0
 ```
-
-This writes a CSV with `(nr, mr, mr_nr)` and prints the fitted power law exponent.
-
-## Output files
-
-- `results_all.json`: all trial outputs for a system.
-- `summary.csv`: one-row summary with mean/std stages to 50% gel fraction.
-- `sweep_summary.csv`: one-row summary per system in a sweep.
+/storage/cmstore02/groups/TAPLab/fconforto-projects/fconforto-olympic-gels-mc/
+├── fit_dsmc/           # k1/k2 fit: fitted_k1_k2.json + PMF comparison plots
+├── fit_poisson/        # Valence model fit: fitted_valence_model.json + parity plots
+├── md_runs/            # 16-system trial results (L=80, 1000 trials each)
+├── sweepL80/           # Full parameter sweep (3627 systems × 1000 trials)
+└── sweepL200/          # Extended sweep (L=200)
+```
 
 ## Notes for reproducibility
 
-- Trial seeds are deterministic (`42 + 1337*t`).
+- Trial seeds are deterministic (`42 + t * 1337`).
 - Stage indexing is 1-based in Julia.
-- `stages_to_half = nothing` means the trial did not cross 50% by `n_stages`.
+- `stages_to_half = nothing` means the trial did not cross 50 % by `n_stages`.

@@ -1,3 +1,9 @@
+include("PolymerUtils.jl")
+include("GillespieSSA.jl")
+include("ParticleDSMC.jl")
+include("Network.jl")
+include("MDMapping.jl")
+
 module CompareDSMC
 
 using ArgParse
@@ -158,8 +164,8 @@ function main()
     halfs_g = [r["gillespie"]["half"] for r in results if r["gillespie"]["half"] !== nothing]
     halfs_p = [r["particle"]["half"] for r in results if r["particle"]["half"] !== nothing]
     
-    mg = isempty(halfs_g) ? NaN : mean(halfs_g)
-    mp = isempty(halfs_p) ? NaN : mean(halfs_p)
+    mg = isempty(halfs_g) ? nothing : mean(halfs_g)
+    mp = isempty(halfs_p) ? nothing : mean(halfs_p)
     
     println("Gillespie mean stages-to-half: $mg ($(length(halfs_g)) gelled)")
     println("Particle  mean stages-to-half: $mp ($(length(halfs_p)) gelled)")
