@@ -2,7 +2,7 @@ module Network
 
 using Graphs
 using Random
-using ..GillespieSSA
+using ..DSMC
 using ..PolymerUtils
 
 export NetworkBuilder, add_ring!, process_cyclisation!, largest_component_fraction, degree_distribution

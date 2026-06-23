@@ -1,15 +1,20 @@
 # LigMC — Julia Simulation + Python Plotting
 
-DSMC-driven Monte Carlo simulation of topological linking and gelation in
-ring-linear polymer blends. Julia handles simulation and sweeps; Python
-handles post-processing plots.
+Particle DSMC Monte Carlo simulation of topological linking and gelation in
+ring-linear polymer blends.  Julia handles simulation and sweeps; Python
+handles fitting and post-processing plots.
 
 ## Model summary
 
 At each stage:
 
 1. `mlin` linear polymers of length `nlin` are injected.
-2. A Gillespie SSA evolves merge and cyclisation events until no linear chains remain.
+2. A particle DSMC evolves merge and cyclisation events via acceptance-rejection
+   sampling until no linear chains remain.  Each step picks between a merge
+   attempt (probability `p_ann`) and a cyclisation attempt (`1 − p_ann`), where
+   `p_ann` is set by the ratio of majorant merge and cyclisation rates.  The
+   true rate is evaluated and the move is accepted with probability
+   `rate / majorant`.
 3. Every cyclisation creates a new ring that can link to existing rings with
    Bernoulli probability derived from the Poisson mean
 
@@ -17,7 +22,8 @@ $$
 \mu = A\,\frac{n_{\mathrm{ring,target}}\,\ell_{\mathrm{cyc}}}{V_{\mathrm{box}}}.
 $$
 
-4. The ring graph is updated and gelation is detected from the largest connected component fraction.
+4. The ring graph is updated and gelation is detected from the largest connected
+   component fraction.
 
 The stage box length is rescaled to keep reference monomer density fixed:
 
@@ -32,11 +38,11 @@ $$
 | Parameter | Value | Provenance |
 |---|---|---|
 | `k1` | 1.0 | Reference scale (arbitrary) |
-| `k2` | 12 933.58 | Fitted from MD cyclised-length PMF (nlin=64); JS div = 3.4 × 10⁻⁴ |
+| `k2` | 7 928.46 | Fitted from MD cyclised-length PMF (nlin=64) via particle DSMC; JS div ≈ 6.5 × 10⁻⁴ |
 | `A` | 0.2093 | Fitted from MD valence-by-size data; RMSE = 0.133 |
 | `ν` | 0.5 | Ideal chain (Rouse) scaling |
 
-See `_smoke_results/fitted_k1_k2.json` and `_smoke_results/fitted_valence_model.json` for full outputs.
+See `_smoke_results/fitted_k1_k2.json` and `_smoke_results/fitted_valence_model.json`.
 
 ## Repository layout
 
@@ -46,22 +52,19 @@ See `_smoke_results/fitted_k1_k2.json` and `_smoke_results/fitted_valence_model.
 │   ├── Project.toml            # Julia dependencies
 │   ├── Manifest.toml           # Resolved versions
 │   ├── PolymerUtils.jl         # c* scaling, kernels, constants
-│   ├── DSMC.jl                 # Gillespie SSA engine (merge + cyclisation)
+│   ├── DSMC.jl                 # Particle DSMC engine (merge + cyclisation)
 │   ├── Network.jl              # Ring graph and Bernoulli linking
 │   ├── Simulation.jl           # Multi-stage trial runner
 │   ├── RunSingle.jl            # CLI: single system
 │   ├── SweepGelation.jl        # CLI: grid sweep
 │   └── ScalingMrNr.jl          # CLI: m_r·n_r scaling analysis
 ├── vis/
+│   ├── fit_dsmc.py             # Fit k2 to MD cyclised-length PMF
+│   ├── plot_sim_vs_md_by_nlin.py
 │   ├── compare_gel_point_time.py
 │   ├── compare_links_per_stage.py
-│   ├── plot_gelation_phase_diagram.py
-│   └── plot_sim_vs_md_by_nlin.py
-├── _smoke_results/             # Diagnostic plots + symlinks to cmstore fits
-├── gel_time_compare.csv        # 16-system sim-vs-MD gelation times
-├── implementation_plan.md      # v2 design document
-├── task.md                     # Execution checklist
-├── plan.md                     # Cleanup & completion plan
+│   └── plot_gelation_phase_diagram.py
+├── _smoke_results/             # Diagnostic plots + fitted parameter JSONs
 └── README.md
 ```
 
@@ -83,7 +86,7 @@ julia --project=src src/RunSingle.jl \
     --trials 1000 --n_stages 100 --out_dir ./results
 ```
 
-Run the standard 16-system matrix with a sweep restricted to the MD-matched grid:
+Run the standard 16-system matrix:
 
 ```bash
 julia --project=src src/SweepGelation.jl \
@@ -93,32 +96,19 @@ julia --project=src src/SweepGelation.jl \
     --out_dir ./results
 ```
 
-Run a fine-grained parameter sweep:
+Refit k2 from MD data:
 
 ```bash
-julia --project=src src/SweepGelation.jl \
-    --nring_min 256 --nring_max 1040 --nring_step 16 \
-    --nlin_min 64 --nlin_max 512 --nlin_step 16 \
-    --trials 1000 --n_stages 100 --L 80 --resume \
-    --out_dir /storage/cmstore02/.../sweepL80
+python vis/fit_dsmc.py
 ```
 
-Scaling analysis:
+Plot DSMC vs MD cyclised-length PMFs:
 
 ```bash
-julia --project=src src/ScalingMrNr.jl \
-    --nr_min 64 --nr_max 4096 --nr_step 16 --L 80 --ccsr 5.0
-```
-
-Plot from sweep results (Python):
-
-```bash
-python vis/plot_gelation_phase_diagram.py \
-    --sweep_csv /path/to/sweep_summary.csv
-
 python vis/plot_sim_vs_md_by_nlin.py \
     --md_csv /path/to/dist_cyclized_linear_length_by_nlin_all_systems.csv \
-    --fit_json _smoke_results/fitted_k1_k2.json
+    --fit_json _smoke_results/fitted_k1_k2.json \
+    --nlins 64,96,128,160
 ```
 
 ## Production results (cmstore)

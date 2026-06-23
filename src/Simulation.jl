@@ -4,13 +4,13 @@ using Random
 using JSON3
 using Base.Threads
 using ..PolymerUtils
-using ..GillespieSSA
+using ..DSMC
 using ..Network
 
 export run_single_trial, run_trials_for_system
 
 const FITTED_K1_DEFAULT = 1.0
-const FITTED_K2_DEFAULT = 12840.849325710129
+const FITTED_K2_DEFAULT = 7928.458898884091
 const FITTED_A_DEFAULT = 0.20927677484111143
 
 function first_stage_to_half(fracs::Vector{Float64})::Union{Int, Nothing}
@@ -30,10 +30,10 @@ function run_stage!(network::NetworkBuilder, config::Dict, stage::Int, phi_ref::
     stage_L = box_volume^(1.0 / 3.0)
     
     linears = fill(config["nlin"], config["mlin"])
-    engine = DSMCEngine(linears, Float64(config["k1"]), Float64(config["k2"]), alpha=Float64(config["alpha"]), nu=Float64(config["nu"]), seed=nothing)
-    engine.rng = rng
-    
-    events = run_until_exhausted!(engine, max_steps=config["max_steps"])
+    stage_seed = abs(rand(rng, Int))
+    events = run_dsmc!(linears, Float64(config["k1"]), Float64(config["k2"]);
+                       alpha=Float64(config["alpha"]), nu=Float64(config["nu"]),
+                       seed=stage_seed, max_steps=config["max_steps"])
     n_events = length(events)
     event_records = Dict{String, Any}[]
     

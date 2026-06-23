@@ -1,6 +1,6 @@
 println("Initializing simulation modules (this may take a moment on first run)...")
 include("PolymerUtils.jl")
-include("GillespieSSA.jl")
+include("DSMC.jl")
 include("Network.jl")
 include("Simulation.jl")
 println("All modules loaded successfully.")
