@@ -22,7 +22,7 @@ function first_stage_to_half(fracs::Vector{Float64})::Union{Int, Nothing}
     return nothing
 end
 
-function run_stage!(network::NetworkBuilder, config::Dict, stage::Int, phi_ref::Float64, rng::AbstractRNG)
+function run_stage!(network::NetworkBuilder, config::Dict, stage::Int, phi_ref::Float64, rng::AbstractRNG, current_time::Float64)
     # Keep the reference monomer density fixed while the ring population grows.
     total_ring_monomers = Float64(sum(network.ring_lengths))
     total_monomers = total_ring_monomers + Float64(config["mlin"] * config["nlin"])
@@ -31,9 +31,9 @@ function run_stage!(network::NetworkBuilder, config::Dict, stage::Int, phi_ref::
     
     linears = fill(config["nlin"], config["mlin"])
     stage_seed = abs(rand(rng, Int))
-    events = run_dsmc!(linears, Float64(config["k1"]), Float64(config["k2"]);
+    events, final_time = run_dsmc!(linears, Float64(config["k1"]), Float64(config["k2"]);
                        alpha=Float64(config["alpha"]), nu=Float64(config["nu"]),
-                       seed=stage_seed, max_steps=config["max_steps"])
+                       seed=stage_seed, max_steps=config["max_steps"], initial_time=current_time)
     n_events = length(events)
     event_records = Dict{String, Any}[]
     
@@ -65,7 +65,7 @@ function run_stage!(network::NetworkBuilder, config::Dict, stage::Int, phi_ref::
     end
     
     frac = largest_component_fraction(network)
-    return frac, stage_L, n_events, event_records
+    return frac, stage_L, n_events, event_records, final_time
 end
 
 function run_single_trial(config::Dict{String, Any})::Dict{String, Any}
@@ -78,6 +78,7 @@ function run_single_trial(config::Dict{String, Any})::Dict{String, Any}
     stage_fractions = Float64[]
     stage_events = Int[]
     stage_box_lengths = Float64[]
+    stage_times = Float64[]
     event_timeline = Dict{String, Any}[]
     
     initial_monomers = Float64(config["mring"] * config["nring"] + config["mlin"] * config["nlin"])
@@ -86,12 +87,14 @@ function run_single_trial(config::Dict{String, Any})::Dict{String, Any}
     end
     phi_ref = initial_monomers / (Float64(config["L"])^3)
     
+    cumulative_time = 0.0
     # We use 1-based indexing for Julia (stage = 1,2,...,n_stages).
     for stage in 1:config["n_stages"]
-        frac, stage_L, n_events, event_records = run_stage!(network, config, stage, phi_ref, rng)
+        frac, stage_L, n_events, event_records, cumulative_time = run_stage!(network, config, stage, phi_ref, rng, cumulative_time)
         push!(stage_fractions, frac)
         push!(stage_box_lengths, stage_L)
         push!(stage_events, n_events)
+        push!(stage_times, cumulative_time)
         append!(event_timeline, event_records)
     end
     
@@ -101,8 +104,10 @@ function run_single_trial(config::Dict{String, Any})::Dict{String, Any}
         "seed" => config["seed"],
         "largest_component_fraction" => stage_fractions,
         "stages_to_half" => half_stage,
+        "stage_times" => stage_times,
         "box_lengths" => stage_box_lengths,
-        "events_per_stage" => stage_events
+        "events_per_stage" => stage_events,
+        "event_timeline" => event_timeline
         # "degree_distribution" => degree_distribution(network) # uncomment if needed, but omitted to save space
     )
 end

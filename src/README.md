@@ -22,6 +22,6 @@ DSMC Monte Carlo simulation of topological linking in ring-linear polymer blends
 | Parameter | Value | Source |
 |---|---|---|
 | `k1` | 1.0 | Reference scale |
-| `k2` | 7 928.46 | Fitted from cyclised-length PMF via particle DSMC (`_smoke_results/fitted_k1_k2.json`) |
-| `A` | 0.2093 | Fitted from MD valence data (`_smoke_results/fitted_valence_model.json`) |
+| `k2` | 7 928.46 | Fitted from cyclised-length PMF via particle DSMC (`parameters/fitted_k1_k2.json`) |
+| `A` | 0.2093 | Fitted from MD valence data (`parameters/fitted_valence_model.json`) |
 | `ν` | 0.5 | Ideal chain / Rouse scaling |

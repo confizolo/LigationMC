@@ -7,7 +7,7 @@ Expect a CSV with one row per (stage,size) group containing at least:
  - `observed_links` (total links observed for those events),
  - optionally `targets` (number of potential existing rings considered per event).
 
-The script reads a fitted model JSON produced by `fit_valence_model.py` containing `A`.
+The script reads a fitted model JSON produced by `fit_valence.py` containing `A`.
 It computes predicted links-per-event using mu = A * (basis) where basis can be
 `nring*mring*nlin` or `nring*nlin` (choose via --basis). For each row the predicted
 mean links-per-event is `targets * (1 - exp(-mu))` where `targets` is taken from the

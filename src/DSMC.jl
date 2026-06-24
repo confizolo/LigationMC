@@ -6,9 +6,6 @@
 # an annealing (merge) attempt and a cyclisation attempt with probability
 # proportional to the current majorant rates, then accepts or rejects
 # based on the true rate / majorant ratio.
-#
-# This is the sole simulation engine for the LigMC project (the earlier
-# well-mixed Gillespie SSA implementation has been removed).
 
 module DSMC
 
@@ -59,7 +56,8 @@ function run_dsmc!(
     alpha::Float64=1.0,
     nu::Float64=0.5,
     seed::Union{Int, Nothing}=nothing,
-    max_steps::Int=500000
+    max_steps::Int=500000,
+    initial_time::Float64=0.0
 )
     rng = seed === nothing ? Random.default_rng() : Random.Xoshiro(seed)
 
@@ -68,7 +66,7 @@ function run_dsmc!(
     masses = copy(linear_lengths)
 
     n_chains = ntot
-    time = 0.0
+    time = initial_time
 
     # Initial majorant rate estimates (must be > 0)
     k_max = smoluchowski_kernel(linear_lengths[1], linear_lengths[1]; alpha=alpha, nu=nu)
@@ -137,7 +135,7 @@ function run_dsmc!(
         end
     end
 
-    return events
+    return events, time
 end
 
 end

@@ -226,6 +226,9 @@ def main() -> None:
         "comparisons": {},
     }
 
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8.5))
+    axes = axes.flatten()
+
     for i, nlin in enumerate(nlins):
         md_sub = md_df[md_df["nlin"] == nlin]
         md_pmf = _normalize_counts(md_sub)
@@ -245,7 +248,26 @@ def main() -> None:
             rng=rng,
         )
         js_div = float(_js_divergence(dsmc_pmf, md_pmf))
-        out_plot = _plot_overlay(md_pmf, dsmc_pmf, nlin=nlin, out_dir=args.out_dir)
+        ax = axes[i]
+        keys = sorted(set(md_pmf) | set(dsmc_pmf))
+        x = np.arange(len(keys), dtype=float)
+        width = 0.38
+
+        y_md = np.array([md_pmf.get(k, 0.0) for k in keys], dtype=float)
+        y_dsmc = np.array([dsmc_pmf.get(k, 0.0) for k in keys], dtype=float)
+
+        ax.bar(x - width / 2.0, y_md, width=width, label="MD target", alpha=0.85, color="#2563eb")
+        ax.bar(x + width / 2.0, y_dsmc, width=width, label="DSMC", alpha=0.85, color="#dc2626")
+        ax.set_xticks(x)
+        ax.set_xticklabels([str(k) for k in keys])
+        ax.set_xlabel(r"Cyclised length ($N_{ring}$)", fontsize=11)
+        if i % 2 == 0:
+            ax.set_ylabel("PMF", fontsize=11)
+        
+        ax.set_title(f"$N_{{lin}} = {nlin}$ (JS = {js_div:.2e})", fontsize=12, fontweight="semibold")
+        ax.grid(alpha=0.25, linewidth=0.6)
+        if i == 0:
+            ax.legend(fontsize=10, framealpha=0.9)
 
         summary["comparisons"][str(nlin)] = {
             "nlin": int(nlin),
@@ -253,9 +275,18 @@ def main() -> None:
             "js_div": js_div,
             "md_pmf": {str(k): float(v) for k, v in sorted(md_pmf.items())},
             "dsmc_pmf": {str(k): float(v) for k, v in sorted(dsmc_pmf.items())},
-            "plot": out_plot,
         }
-        print(f"nlin={nlin:3d} mlin={mlin} JS={js_div:.6e} plot={out_plot}")
+        print(f"nlin={nlin:3d} mlin={mlin} JS={js_div:.6e}")
+
+    # Hide any unused subplots
+    for j in range(i + 1, len(axes)):
+        axes[j].set_visible(False)
+
+    fig.tight_layout()
+    out_plot = os.path.join(args.out_dir, "fit_to_md_pmf_comparison_grid.png")
+    fig.savefig(out_plot, dpi=160)
+    plt.close(fig)
+    print(f"saved grid plot: {out_plot}")
 
     out_json = save_json(
         summary,

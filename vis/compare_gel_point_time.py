@@ -29,11 +29,23 @@ class GelRecord:
 
 
 def _system_dir(root: str, rec: GelRecord) -> str:
-    name = f"L{rec.L}_mring{rec.mring}_nring{rec.nring}_mlin{rec.mlin}_nlin{rec.nlin}"
-    return os.path.join(root, name)
+    name1 = f"L{rec.L}_mring{rec.mring}_nring{rec.nring}_mlin{rec.mlin}_nlin{rec.nlin}"
+    name2 = f"L{float(rec.L)}_mring{rec.mring}_nring{rec.nring}_mlin{rec.mlin}_nlin{rec.nlin}"
+    if os.path.isdir(os.path.join(root, name2)):
+        return os.path.join(root, name2)
+    return os.path.join(root, name1)
 
 
 def _load_trial_results(run_dir: str) -> list[dict]:
+    import json
+    results_all_json = os.path.join(run_dir, "results_all.json")
+    if os.path.exists(results_all_json):
+        with open(results_all_json, "r") as handle:
+            payload = json.load(handle)
+        if isinstance(payload, dict):
+            for value in payload.values():
+                return value
+                
     results_all = os.path.join(run_dir, "results_all.pkl")
     if os.path.exists(results_all):
         with open(results_all, "rb") as handle:
@@ -41,11 +53,16 @@ def _load_trial_results(run_dir: str) -> list[dict]:
         if isinstance(payload, dict):
             for value in payload.values():
                 return value
+                
     for fname in os.listdir(run_dir):
         if fname.startswith("results_") and fname.endswith(".pkl"):
             with open(os.path.join(run_dir, fname), "rb") as handle:
                 return pickle.load(handle)
-    raise FileNotFoundError(f"No results_* or results_all.pkl found in {run_dir}")
+        if fname.startswith("results_") and fname.endswith(".json"):
+            with open(os.path.join(run_dir, fname), "r") as handle:
+                return json.load(handle)
+                
+    raise FileNotFoundError(f"No results_* or results_all.pkl/json found in {run_dir}")
 
 
 def _extract_stages_to_half(trial_results: list[dict]) -> np.ndarray:
@@ -61,17 +78,28 @@ def _extract_stages_to_half(trial_results: list[dict]) -> np.ndarray:
 
 def load_gel_point_file(path: str) -> list[GelRecord]:
     df = pd.read_csv(path)
+    # Filter for gel point rows
+    if "stage_label" in df.columns:
+        df = df[df["stage_label"] == "tgel"]
+        
     has_std = "t_std" in df.columns
     records: list[GelRecord] = []
     for _, row in df.iterrows():
+        # Handle uppercase or lowercase column names
+        mring = int(row.get("Mring", row.get("mring")))
+        nring = int(row.get("Nring", row.get("nring")))
+        mlin = int(row.get("Mlin", row.get("mlin")))
+        nlin = int(row.get("Nlin", row.get("nlin")))
+        t = float(row.get("t", row.get("stage")))
+        
         records.append(
             GelRecord(
                 L=int(row["L"]),
-                mring=int(row["Mring"]),
-                nring=int(row["Nring"]),
-                mlin=int(row["Mlin"]),
-                nlin=int(row["Nlin"]),
-                md_t=float(row["t"]),
+                mring=mring,
+                nring=nring,
+                mlin=mlin,
+                nlin=nlin,
+                md_t=t,
                 md_t_std=float(row["t_std"]) if has_std else None,
             )
         )

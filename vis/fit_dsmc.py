@@ -153,7 +153,7 @@ def main() -> None:
     out_dict = {"k1": k1, "k2": res.x, "js_div": res.fun, "method": "ParticleDSMC"}
 
     os.makedirs("./results", exist_ok=True)
-    out_path = "./_smoke_results/fitted_k1_k2.json"
+    out_path = "./parameters/fitted_k1_k2.json"
     with open(out_path, "w") as f:
         json.dump(out_dict, f, indent=2)
     print(f"Saved fitted parameters to {out_path}")

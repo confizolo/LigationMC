@@ -1,4 +1,4 @@
-"""Create a gelation phase diagram matching the legacy 3_analysis implementation."""
+"""Create a gelation phase diagram"""
 
 from __future__ import annotations
 
